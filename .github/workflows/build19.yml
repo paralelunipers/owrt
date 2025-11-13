@@ -1,0 +1,92 @@
+name: Build OpenWrt 19.07.7 (ZTE E8820V2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'OpenWrt Version (e.g., 19.07.7)'
+        required: true
+        default: '19.07.7'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Install Build Dependencies
+        # OpenWrt build membutuhkan banyak paket. Ini adalah daftar minimal.
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext python3 unzip file perl curl bc wget
+          
+      - name: 🗑️ Disk Cleanup (Pre-build)
+        # Menghapus paket cache yang tidak perlu setelah instalasi dependensi
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/*
+          sudo apt clean
+          df -h # Menampilkan sisa ruang disk
+          
+      - name: 💾 Download OpenWrt Source Archive
+        run: |
+          OPENWRT_VERSION=${{ github.event.inputs.version }}
+          SOURCE_URL="https://github.com/siwind/openwrt/releases/download/v${OPENWRT_VERSION}/openwrt-${OPENWRT_VERSION}.tar.gz"
+          wget -q --show-progress -O openwrt-source.tar.gz $SOURCE_URL
+
+      - name: 📦 Extract OpenWrt Source
+        run: |
+          tar -xzf openwrt-source.tar.gz
+          mv openwrt-* openwrt
+          
+      - name: ⬇️ Download and Apply Custom Config
+        run: |
+          CONFIG_URL="https://raw.githubusercontent.com/paralelunipers/sm-wrt/main/user-config/v19.07/config_zte_e8820v2"
+          wget -q --show-progress -O openwrt/.config $CONFIG_URL
+
+      - name: ⚙️ Update Feeds and Prepare Build
+        working-directory: ./openwrt
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+
+      - name: 🧱 Compile Firmware
+        working-directory: ./openwrt
+        run: |
+          echo "Start compiling..."
+          make -j$(nproc) V=s 
+          echo "Compiling finished."
+
+      - name: 🗑️ Disk Cleanup (Post-build)
+        # Menghapus file cache build OpenWrt yang besar
+        working-directory: ./openwrt
+        run: |
+          # Menghapus folder 'build_dir' (berisi objek kompilasi) dan 'dl' (berisi sumber kode paket)
+          # Perlu diingat, ini akan memperlambat build berikutnya jika ada cache
+          # Namun sangat penting untuk mengosongkan ruang disk
+          echo "Cleaning up large build directories..."
+          rm -rf build_dir/
+          rm -rf dl/
+          df -h # Cek ruang disk setelah cleanup
+
+      - name: 📁 Collect Artifacts
+        id: collect
+        run: |
+          FIRMWARE_DIR=$(find ./openwrt/bin/targets -maxdepth 2 -type d -name "openwrt" | head -n 1)
+          if [ -d "$FIRMWARE_DIR" ]; then
+            echo "firmware_path=$FIRMWARE_DIR" >> $GITHUB_OUTPUT
+            echo "Firmware files found in: $FIRMWARE_DIR"
+          else
+            echo "Error: Firmware output directory not found!"
+            exit 1
+          fi
+          
+      - name: 📤 Upload Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenWrt-19.07.7-ZTE-E8820V2-Firmware
+          path: ${{ steps.collect.outputs.firmware_path }}/
+          if-no-files-found: error
+          retention-days: 7
