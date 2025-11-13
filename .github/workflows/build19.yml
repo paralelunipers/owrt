@@ -16,27 +16,44 @@ jobs:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🛠️ Install Build Dependencies (Revised)
+      - name: 🛠️ Install Build Dependencies (Final Python Fix)
         run: |
-          # Hapus python-is-python3 untuk memastikan python symlink tidak mengganggu
-          sudo apt purge -y python-is-python3 || true
-          
-          # Perlu diketahui: OpenWrt 19.07 masih memerlukan paket Python 2
-          # Instalasi python2, g++ 4.8 atau yang lebih baru seharusnya sudah tercakup
+          # 1. Perbarui daftar paket
           sudo apt update
-          sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext python python2 unzip file perl curl bc wget
           
-          # Konfirmasi symlink python menunjuk ke python2, jika ada
-          python2-minimal 
+          # 2. Instal semua dependensi OpenWrt. 
+          # Menggunakan 'python2-minimal' sebagai pengganti 'python'/'python2'.
+          # Tambahkan python-is-python3 untuk memastikan python3 tersedia, dan jq untuk debugging jika diperlukan.
+          sudo apt install -y \
+            build-essential \
+            libncurses5-dev \
+            zlib1g-dev \
+            gawk \
+            git \
+            gettext \
+            unzip \
+            file \
+            perl \
+            curl \
+            bc \
+            wget \
+            libssl-dev \
+            libexpat1-dev \
+            python2-minimal \
+            python-is-python3 \
+            jq
             
-          # Jika 'python' (symlink) masih diperlukan untuk OpenWrt 19.07, 
-          # kita buat symlink 'python' menunjuk ke 'python2' secara manual
+          # 3. Hapus symlink 'python' yang menunjuk ke python3 (dari python-is-python3)
+          # Ini penting karena kita perlu 'python' menunjuk ke python2 untuk 19.07
+          sudo rm /usr/bin/python || true
+          
+          # 4. Buat symlink 'python' menunjuk ke Python 2.7
           sudo ln -sf /usr/bin/python2.7 /usr/bin/python
           
+          echo "--- Verifikasi Versi Python ---"
           # Tampilkan versi compiler dan python untuk debugging
-          gcc --version
-          g++ --version
           python --version
+          python2 --version
           
       - name: 🗑️ Disk Cleanup (Pre-build)
         # Menghapus paket cache yang tidak perlu setelah instalasi dependensi
