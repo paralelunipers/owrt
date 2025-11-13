@@ -32,13 +32,13 @@ jobs:
       - name: 💾 Download OpenWrt Source Archive
         run: |
           OPENWRT_VERSION=${{ github.event.inputs.version }}
-          SOURCE_URL="https://github.com/siwind/openwrt/releases/download/v${OPENWRT_VERSION}/openwrt-${OPENWRT_VERSION}.tar.gz"
+          SOURCE_URL="https://github.com/siwind/openwrt/releases/download/v19.07.7/openwrt-19.07.7.tar.gz"
           wget -q --show-progress -O openwrt-source.tar.gz $SOURCE_URL
 
       - name: 📦 Extract OpenWrt Source
         run: |
           tar -xzf openwrt-source.tar.gz
-          mv openwrt-* openwrt
+          mv openwrt-19.07.7 openwrt
           
       - name: ⬇️ Download and Apply Custom Config
         run: |
