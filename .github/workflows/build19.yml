@@ -16,11 +16,23 @@ jobs:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🛠️ Install Build Dependencies
-        # OpenWrt build membutuhkan banyak paket. Ini adalah daftar minimal.
+      - name: 🛠️ Install Build Dependencies (Revised)
         run: |
+          # Hapus python-is-python3 untuk memastikan python symlink tidak mengganggu
+          sudo apt purge -y python-is-python3 || true
+          
+          # Perlu diketahui: OpenWrt 19.07 masih memerlukan paket Python 2
+          # Instalasi python2, g++ 4.8 atau yang lebih baru seharusnya sudah tercakup
           sudo apt update
-          sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext python3 unzip file perl curl bc wget
+          sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext python python2 unzip file perl curl bc wget
+          
+          # Konfirmasi symlink python menunjuk ke python2, jika ada
+          sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
+          
+          # Tampilkan versi compiler dan python untuk debugging
+          gcc --version
+          g++ --version
+          python --version
           
       - name: 🗑️ Disk Cleanup (Pre-build)
         # Menghapus paket cache yang tidak perlu setelah instalasi dependensi
