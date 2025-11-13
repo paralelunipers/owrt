@@ -27,7 +27,11 @@ jobs:
           sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext python python2 unzip file perl curl bc wget
           
           # Konfirmasi symlink python menunjuk ke python2, jika ada
-          sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
+          python2-minimal 
+            
+          # Jika 'python' (symlink) masih diperlukan untuk OpenWrt 19.07, 
+          # kita buat symlink 'python' menunjuk ke 'python2' secara manual
+          sudo ln -sf /usr/bin/python2.7 /usr/bin/python
           
           # Tampilkan versi compiler dan python untuk debugging
           gcc --version
