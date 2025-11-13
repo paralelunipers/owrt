@@ -83,6 +83,13 @@ jobs:
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          
+      - name: 🔄 Fix Packages Feed URL (Error 503)
+        working-directory: ./openwrt
+        run: |
+          # Perintah ini mengganti semua instance dari URL yang error dengan mirror GitHub
+          sed -i 's|https://git.openwrt.org/feed/packages.git|https://github.com/openwrt/packages.git|g' feeds.conf.default
+          echo "Packages feed URL berhasil diubah ke GitHub mirror."
           make defconfig FORCE=1
 
       - name: 🧱 Compile Firmware
