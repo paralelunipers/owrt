@@ -90,7 +90,7 @@ jobs:
           # Perintah ini mengganti semua instance dari URL yang error dengan mirror GitHub
           sed -i 's|https://git.openwrt.org/feed/packages.git|https://github.com/openwrt/packages.git|g' feeds.conf.default
           echo "Packages feed URL berhasil diubah ke GitHub mirror."
-          make defconfig FORCE=1
+          FORCE=1 make defconfig
 
       - name: 🧱 Compile Firmware
         working-directory: ./openwrt
