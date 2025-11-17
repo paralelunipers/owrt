@@ -72,8 +72,8 @@ jobs:
           curl \
           zlib1g-dev
         ln -sf /usr/bin/python2 /usr/bin/python
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        mkdir -p /workdir
+        chown $USER:$GROUPS /workdir
         
     - name: Clone source code
       working-directory: /workdir
