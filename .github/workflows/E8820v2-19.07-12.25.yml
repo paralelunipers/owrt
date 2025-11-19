@@ -23,8 +23,8 @@ env:
   REPO_BRANCH: openwrt-19.07
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: 1907.config
-  DIY_P1_SH: diy-19.07-4.sh
-  DIY_P2_SH: diy-19.07-5.sh
+  DIY_P1_SH: diy-18.06.sh
+  DIY_P2_SH: diy-18.06.sh
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
   UPLOAD_COWTRANSFER: false
