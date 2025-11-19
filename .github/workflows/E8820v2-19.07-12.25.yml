@@ -22,7 +22,7 @@ env:
   REPO_URL: https://github.com/openwrt/openwrt.git
   REPO_BRANCH: openwrt-19.07
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: 19.07-12.25.config
+  CONFIG_FILE: z.config
   DIY_P1_SH: diy-19.07-1.sh
   DIY_P2_SH: diy-19.07-2.sh
   UPLOAD_BIN_DIR: false
@@ -35,6 +35,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
 
     steps:
     - name: Checkout
@@ -44,23 +46,40 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        apt-get update
+        apt-get install -y \
+          build-essential \
+          clang \
+          gcc \
+          g++ \
+          bash \
+          gawk \
+          git \
+          libncurses-dev \
+          libssl-dev \
+          python2 \
+          python2-dev \
+          python3 \
+          unzip \
+          wget \
+          file \
+          rsync \
+          subversion \
+          flex \
+          bison \
+          zip \
+          curl \
+          zlib1g-dev
+        ln -sf /usr/bin/python2 /usr/bin/python
+        mkdir -p /workdir
+        chown $USER:$GROUPS /workdir
+        
     - name: Clone source code
       working-directory: /workdir
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
-        # git clone https://github.com/KyleRicardo/MentoHUST-OpenWrt-ipk.git openwrt/package/mentohust
-        # git clone https://github.com/BoringCat/luci-app-mentohust.git openwrt/package/luci-app-mentohust
-        # git clone https://github.com/kongfl888/luci-app-adguardhome.git openwrt/package/luci-app-adguardhome
-        git clone https://github.com/rufengsuixing/luci-app-zerotier.git openwrt/package/luci-app-zerotier
         rm -rf openwrt/target/linux/ramips/image/mt7621.mk        
         rm -rf openwrt/target/linux/ramips/base-files/etc/board.d/02_network
         rm -rf openwrt/target/linux/ramips/base-files/etc/board.d/01_leds
