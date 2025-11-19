@@ -128,8 +128,9 @@ jobs:
          CONFIG_PACKAGE_luci-proto-ppp=y
          CONFIG_PACKAGE_luci-theme-bootstrap=y
          EOF
-         cd openwrt
+
     - name: Apply default configuration
+      working-directory: /workdir
       run: |
         export FORCE_UNSAFE_CONFIGURE=1
         make defconfig    
