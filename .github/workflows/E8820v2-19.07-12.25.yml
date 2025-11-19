@@ -174,26 +174,8 @@ jobs:
     - name: Apply default configuration
       working-directory: /workdir
       run: |
-        export FORCE_UNSAFE_CONFIGURE=1
-        make oldconfig    
-
-    - name: moving config directory
-      working-directory: /workdir
-      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
-      run: |
-        cd openwrt
-        mkdir cconfig
-        cp .config cconfig
-        
-    - name: Upload config directory
-      uses: actions/upload-artifact@main
-      if: env.UPLOAD_BIN_DIR == 'true'
-      with:
-        name: OpenWrt_config${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/cconfig
-        
-
-          
+        export FORCE_UNSAFE_CONFIGURE=1 
+                
     - name: Download package
       id: package
       if: (github.event.inputs.ssh == 'false')
