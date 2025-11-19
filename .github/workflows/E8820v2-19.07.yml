@@ -19,8 +19,8 @@ on:
         default: 'false'
 
 env:
-  REPO_URL: https://github.com/ariifr/openwrt.git
-  REPO_BRANCH: openwrt-19.07
+  REPO_URL: https://github.com/siwind/openwrt.git
+  REPO_BRANCH: openwrt-21.02
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: 1907.config
   DIY_P1_SH: diy-18.06.sh
