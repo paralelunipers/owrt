@@ -1,0 +1,142 @@
+name: Build OpenWrt E8820v2 1907 with Container
+on:
+  workflow_dispatch:
+
+env:
+  REPO_BRANCH: openwrt-19.07
+  CONFIG_URL: "https://raw.githubusercontent.com/siwind/openwrt/openwrt-19.07/user-config/config-zte-e8820v2"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+      options: --user root
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Install dependencies
+      run: |
+        apt-get update
+        apt-get install -y build-essential clang gcc g++ bash gawk git \
+          libncurses-dev libssl-dev python2 python2-dev python3 unzip \
+          wget file rsync subversion flex bison zip curl zlib1g-dev
+        ln -sf /usr/bin/python2 /usr/bin/python
+        mkdir -p /workdir
+
+    - name: Clone and setup OpenWrt
+      working-directory: /workdir
+      run: |
+        git clone https://github.com/openwrt/openwrt.git -b $REPO_BRANCH openwrt
+        cd openwrt
+        
+        # Apply E8820v2 device support
+        git clone https://github.com/Z-Prion/wr720n-710n-700n-lede-file.git custom-files
+        cp custom-files/E8820v2-19.07/mt7621.mk target/linux/ramips/image/
+        cp custom-files/E8820v2-19.07/02_network target/linux/ramips/base-files/etc/board.d/
+        cp custom-files/E8820v2-19.07/01_leds target/linux/ramips/base-files/etc/board.d/
+        cp custom-files/E8820v2-19.07/E8820V2.dts target/linux/ramips/dts/
+        
+        chmod +x target/linux/ramips/base-files/etc/board.d/02_network
+        chmod +x target/linux/ramips/base-files/etc/board.d/01_leds
+
+    - name: Setup feeds and config
+      working-directory: /workdir/openwrt
+      run: |
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+        wget -O .config $CONFIG_URL
+        make defconfig
+
+    - name: Build firmware
+      working-directory: /workdir/openwrt
+      env:
+        FORCE_UNSAFE_CONFIGURE: 1
+      run: |
+        make -j$(nproc) || make -j1 || make -j1 V=s
+
+    - name: Find and prepare ZTE E8820V2 firmware
+      id: find_firmware
+      run: |
+        cd /workdir/openwrt/bin/targets/*/*
+        
+        # Cari file firmware ZTE E8820V2
+        FIRMWARE_FILES=$(find . -name "*e8820*" -o -name "*8820*" -o -name "*zte*" -type f | grep -E '\.(bin|img|trx|bin)$' | head -5)
+        
+        if [ -z "$FIRMWARE_FILES" ]; then
+          echo "No ZTE E8820V2 firmware found, listing all files:"
+          find . -name "*.bin" -o -name "*.img" -o -name "*.trx" | head -10
+          echo "::warning file=find_firmware::No specific ZTE E8820V2 firmware found"
+          # Ambil semua file firmware sebagai fallback
+          FIRMWARE_FILES=$(find . -name "*.bin" -o -name "*.img" -o -name "*.trx" | head -10)
+        fi
+        
+        echo "Found firmware files:"
+        echo "$FIRMWARE_FILES"
+        
+        # Buat directory untuk firmware ZTE
+        mkdir -p zte_e8820v2_firmware
+        
+        # Copy firmware files
+        for file in $FIRMWARE_FILES; do
+          if [ -f "$file" ]; then
+            cp "$file" zte_e8820v2_firmware/
+            echo "Copied: $file"
+          fi
+        done
+        
+        # Juga copy initramfs jika ada (untuk testing)
+        find . -name "*initramfs*" -type f | head -3 | while read file; do
+          cp "$file" zte_e8820v2_firmware/ 2>/dev/null || true
+        done
+        
+        # List files yang akan diupload
+        echo "Files to be uploaded:"
+        ls -la zte_e8820v2_firmware/
+        
+        # Count files
+        FILE_COUNT=$(ls -1 zte_e8820v2_firmware/ | wc -l)
+        echo "FILE_COUNT=$FILE_COUNT" >> $GITHUB_ENV
+        echo "FIRMWARE_DIR=zte_e8820v2_firmware" >> $GITHUB_ENV
+        
+        # Set output untuk step selanjutnya
+        echo "::set-output name=firmware_count::$FILE_COUNT"
+
+    - name: Upload ZTE E8820V2 firmware to artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ZTE-E8820V2-Firmware-${{ github.run_id }}-${{ github.run_number }}
+        path: /workdir/openwrt/bin/targets/*/*/zte_e8820v2_firmware/
+        retention-days: 30
+        if-no-files-found: error
+
+    - name: Show upload summary
+      if: always()
+      run: |
+        echo "=== Upload Summary ==="
+        echo "Firmware files uploaded: ${{ env.FILE_COUNT }}"
+        echo "Artifact name: ZTE-E8820V2-Firmware-${{ github.run_id }}-${{ github.run_number }}"
+        echo "Workflow: ${{ github.workflow }}"
+        echo "Run ID: ${{ github.run_id }}"
+        
+        if [ "${{ env.FILE_COUNT }}" -eq "0" ]; then
+          echo "::warning::No firmware files were uploaded!"
+        else
+          echo "✅ Firmware upload completed successfully"
+        fi
+
+    - name: Build info
+      if: always()
+      run: |
+        echo "=== Build Information ==="
+        echo "Device: ZTE E8820V2"
+        echo "OpenWrt Version: ${{ env.REPO_BRANCH }}"
+        echo "Build date: $(date)"
+        echo "GitHub Run: ${{ github.run_id }}"
+        
+        # Cek size firmware directory
+        if [ -d "/workdir/openwrt/bin/targets/*/*/zte_e8820v2_firmware" ]; then
+          du -sh /workdir/openwrt/bin/targets/*/*/zte_e8820v2_firmware
+        fi
