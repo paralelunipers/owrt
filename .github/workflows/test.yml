@@ -4,8 +4,7 @@ on:
 
 env:
   REPO_BRANCH: openwrt-19.07
-  CONFIG_URL: config_zte
-
+  CONFIG_URL:  "https://raw.githubusercontent.com/siwind/openwrt/refs/heads/openwrt-19.07/user-config/config-zte-e8820v2"
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -49,7 +48,7 @@ jobs:
     
     - name: copy config files
       run: |
-        [ -e $CONFIG_URL ] && mv $CONFIG_URL openwrt/.config
+        wget -q --show-progress -O openwrt/.config $CONFIG_URL
         
     - name: Build firmware
       working-directory: /workdir/openwrt
