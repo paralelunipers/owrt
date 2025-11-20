@@ -46,6 +46,9 @@ jobs:
       run: |
         ./scripts/feeds update -a
         ./scripts/feeds install -a
+    
+    - name: copy config files
+      run: |
         [ -e $CONFIG_URL ] && mv $CONFIG_URL openwrt/.config
         
     - name: Build firmware
