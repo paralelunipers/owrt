@@ -48,7 +48,7 @@ jobs:
     
     - name: copy config files
       run: |
-        wget -q --show-progress -O openwrt/.config $CONFIG_URL
+        wget -q --show-progress -O /workdir/openwrt/.config $CONFIG_URL
         
     - name: Build firmware
       working-directory: /workdir/openwrt
