@@ -4,7 +4,7 @@ on:
 
 env:
   REPO_BRANCH: openwrt-19.07
-  CONFIG_URL: 19.config
+  CONFIG_URL: config_zte
 
 jobs:
   build:
@@ -47,11 +47,7 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         # 1. Bersihkan config lama (opsional tapi recommended)
-        export TERM=dumb
-        make clean
-        make defconfig
         [ -e $CONFIG_URL ] && mv $CONFIG_URL .config
-        make oldconfig
         
     - name: Build firmware
       working-directory: /workdir/openwrt
