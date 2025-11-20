@@ -4,7 +4,7 @@ on:
 
 env:
   REPO_BRANCH: openwrt-19.07
-  CONFIG_URL: "https://raw.githubusercontent.com/paralelunipers/owrt/refs/heads/main/1907-25.config"
+  CONFIG_URL: 19.config
 
 jobs:
   build:
@@ -40,13 +40,18 @@ jobs:
         
         chmod +x target/linux/ramips/base-files/etc/board.d/02_network
         chmod +x target/linux/ramips/base-files/etc/board.d/01_leds
+        
     - name: Setup feeds and config
       working-directory: /workdir/openwrt
       run: |
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-        wget -O .config $CONFIG_URL
+        # 1. Bersihkan config lama (opsional tapi recommended)
+        make clean
         make defconfig
+        [ -e $CONFIG_URL ] && mv $CONFIG_URL openwrt/.config
+        make oldconfig
+        
     - name: Build firmware
       working-directory: /workdir/openwrt
       env:
