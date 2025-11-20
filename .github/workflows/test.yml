@@ -32,22 +32,21 @@ jobs:
         cd openwrt
         
         # Apply E8820v2 device support
-        git clone https://github.com/Z-Prion/wr720n-710n-700n-lede-file.git custom-files
-        cp custom-files/E8820v2-19.07/mt7621.mk target/linux/ramips/image/
-        cp custom-files/E8820v2-19.07/02_network target/linux/ramips/base-files/etc/board.d/
-        cp custom-files/E8820v2-19.07/01_leds target/linux/ramips/base-files/etc/board.d/
-        cp custom-files/E8820v2-19.07/E8820V2.dts target/linux/ramips/dts/
+        # git clone https://github.com/Z-Prion/wr720n-710n-700n-lede-file.git custom-files
+        # cp custom-files/E8820v2-19.07/mt7621.mk target/linux/ramips/image/
+        # cp custom-files/E8820v2-19.07/02_network target/linux/ramips/base-files/etc/board.d/
+        # cp custom-files/E8820v2-19.07/01_leds target/linux/ramips/base-files/etc/board.d/
+        # cp custom-files/E8820v2-19.07/E8820V2.dts target/linux/ramips/dts/
         
-        chmod +x target/linux/ramips/base-files/etc/board.d/02_network
-        chmod +x target/linux/ramips/base-files/etc/board.d/01_leds
+        # chmod +x target/linux/ramips/base-files/etc/board.d/02_network
+        # chmod +x target/linux/ramips/base-files/etc/board.d/01_leds
         
     - name: Setup feeds and config
       working-directory: /workdir/openwrt
       run: |
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-        # 1. Bersihkan config lama (opsional tapi recommended)
-        [ -e $CONFIG_URL ] && mv $CONFIG_URL .config
+        [ -e $CONFIG_URL ] && mv $CONFIG_URL openwrt/.config
         
     - name: Build firmware
       working-directory: /workdir/openwrt
