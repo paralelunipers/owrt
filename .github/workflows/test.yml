@@ -49,7 +49,7 @@ jobs:
         # 1. Bersihkan config lama (opsional tapi recommended)
         make clean
         make defconfig
-        [ -e $CONFIG_URL ] && mv $CONFIG_URL openwrt/.config
+        [ -e $CONFIG_URL ] && mv $CONFIG_URL .config
         make oldconfig
         
     - name: Build firmware
