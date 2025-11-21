@@ -4,7 +4,7 @@ on:
 
 env:
   REPO_BRANCH: openwrt-19.07
-  CONFIG_URL: "https://raw.githubusercontent.com/paralelunipers/openwrt_8820v2/refs/heads/openwrt-23.05/productconfig/zte_e8820v2_defconfig"
+  CONFIG_URL: "https://raw.githubusercontent.com/paralelunipers/owrt/refs/heads/main/1907_config"
 jobs:
   build:
     runs-on: ubuntu-22.04
