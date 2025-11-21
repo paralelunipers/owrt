@@ -1,0 +1,215 @@
+name: Build OpenWrt 19.07 ZTE E8820V2
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-openwrt:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+
+    steps:
+    - name: Update package list and install dependencies
+      run: |
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y \
+          build-essential \
+          ccache \
+          ecj \
+          fastjar \
+          file \
+          g++ \
+          gawk \
+          gettext \
+          git \
+          java-propose-classpath \
+          libelf-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libssl-dev \
+          python \
+          python3 \
+          python3-distutils \
+          python3-pip \
+          rsync \
+          subversion \
+          swig \
+          time \
+          unzip \
+          wget \
+          xsltproc \
+          zlib1g-dev \
+          curl
+
+    - name: Download OpenWrt source
+      run: |
+        wget https://github.com/siwind/openwrt/releases/download/v19.07.7/openwrt-19.07.7.tar.gz
+        tar -xzf openwrt-19.07.7.tar.gz
+        mv openwrt-19.07.7 openwrt
+        ls -la openwrt/
+
+    - name: Check for config file in source
+      working-directory: ./openwrt
+      run: |
+        echo "Looking for config files..."
+        find . -name "*config*" -type f | grep -i zte || true
+        find . -name "*config*" -type f | grep -i e8820 || true
+        find . -name "config-*" -type f | head -10
+
+    - name: Setup configuration
+      working-directory: ./openwrt
+      run: |
+        # Check if config file exists in the source
+        if [ -f "config-zte-e8820v2" ]; then
+          echo "Using config-zte-e8820v2 from source"
+          cp config-zte-e8820v2 .config
+        elif [ -f "../custom-files/config-zte-e8820v2" ]; then
+          echo "Using config-zte-e8820v2 from custom files"
+          cp ../custom-files/config-zte-e8820v2 .config
+        else
+          echo "Error: config-zte-e8820v2 not found!"
+          echo "Available config files:"
+          find . -name "*config*" -type f
+          exit 1
+        fi
+
+    - name: Setup build environment
+      working-directory: ./openwrt
+      run: |
+        # Update feeds
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+        # Update config with new symbols
+        make defconfig
+
+        # Display final config summary
+        echo "=== Final configuration summary ==="
+        make -s printenv V=0
+        echo "==================================="
+
+    - name: Build OpenWrt
+      working-directory: ./openwrt
+      run: |
+        # Build with multiple jobs
+        echo "Starting build process..."
+        make -j$(nproc) V=s
+
+      env:
+        CCACHE_DIR: /github/workspace/ccache
+        FORCE_UNSAFE_CONFIGURE: 1
+
+    - name: Prepare artifacts
+      working-directory: ./openwrt
+      run: |
+        # Create artifacts directory
+        mkdir -p /tmp/artifacts
+        
+        # Copy firmware files for ZTE E8820V2
+        echo "Copying firmware files for ZTE E8820V2..."
+        find bin/targets -name "*e8820*" -o -name "*zte*" | while read file; do
+          echo "Found: $file"
+          cp "$file" /tmp/artifacts/
+        done
+        
+        # Also copy generic firmware files
+        find bin/targets -name "*.bin" -o -name "*.img" -o -name "*.gz" | head -10 | while read file; do
+          filename=$(basename "$file")
+          if [ ! -f "/tmp/artifacts/$filename" ]; then
+            cp "$file" /tmp/artifacts/
+          fi
+        done
+        
+        # Copy build config
+        echo "Copying build config..."
+        cp .config /tmp/artifacts/build.config
+        cp config-zte-e8820v2 /tmp/artifacts/original-config-zte-e8820v2 2>/dev/null || true
+        
+        # Copy package manifests
+        echo "Copying package manifests..."
+        find bin/targets -name "*.manifest" | head -5 | while read file; do
+          cp "$file" /tmp/artifacts/
+        done
+        
+        # Copy build info
+        echo "Copying build info..."
+        find bin/targets -name "*.buildinfo" | head -5 | while read file; do
+          cp "$file" /tmp/artifacts/
+        done
+        
+        # Copy version info
+        echo "Copying version info..."
+        find bin/targets -name "version.buildinfo" -o -name "*.version" | head -5 | while read file; do
+          cp "$file" /tmp/artifacts/
+        done
+        
+        # Create build metadata
+        echo "Build date: $(date)" > /tmp/artifacts/build-info.txt
+        echo "Git revision: $GITHUB_SHA" >> /tmp/artifacts/build-info.txt
+        echo "Workflow: $GITHUB_WORKFLOW" >> /tmp/artifacts/build-info.txt
+        echo "Target: ZTE E8820V2" >> /tmp/artifacts/build-info.txt
+        echo "Source: siwind/openwrt v19.07.7" >> /tmp/artifacts/build-info.txt
+        
+        # List all artifacts
+        echo "=== Final artifacts ==="
+        ls -la /tmp/artifacts/
+        echo "======================"
+
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: zte-e8820v2-firmware
+        path: |
+          /tmp/artifacts/*.bin
+          /tmp/artifacts/*.img
+          /tmp/artifacts/*.gz
+        retention-days: 30
+
+    - name: Upload config artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: zte-e8820v2-config
+        path: |
+          /tmp/artifacts/build.config
+          /tmp/artifacts/original-config-zte-e8820v2
+          /tmp/artifacts/build-info.txt
+        retention-days: 30
+
+    - name: Upload manifest artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: zte-e8820v2-manifest
+        path: |
+          /tmp/artifacts/*.manifest
+        retention-days: 30
+
+    - name: Upload buildinfo artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: zte-e8820v2-buildinfo
+        path: |
+          /tmp/artifacts/*.buildinfo
+          /tmp/artifacts/*.version
+        retention-days: 30
+
+    - name: Upload all artifacts as backup
+      uses: actions/upload-artifact@v4
+      with:
+        name: zte-e8820v2-complete
+        path: /tmp/artifacts/
+        retention-days: 7
+
+    - name: Upload build logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs
+        path: |
+          openwrt/logs/**/*
+          openwrt/build_dir/**/log*
+        retention-days: 7
