@@ -61,6 +61,11 @@ jobs:
         find . -name "*config*" -type f | grep -i e8820 || true
         find . -name "config-*" -type f | head -10
 
+    - name: Checkout custom files (if any)
+      uses: actions/checkout@v4
+      with:
+        path: custom-files
+
     - name: Setup configuration
       working-directory: ./openwrt
       run: |
@@ -78,26 +83,74 @@ jobs:
           exit 1
         fi
 
+        # Copy custom files if they exist
+        if [ -d "../custom-files/files" ]; then
+          echo "Copying custom files..."
+          cp -r ../custom-files/files ./
+        fi
+
+    - name: Clean problematic packages
+      working-directory: ./openwrt
+      run: |
+        # Remove problematic ksmbd package that causes dependency error
+        if [ -d "package/feeds/packages/ksmbd" ]; then
+          echo "Removing problematic ksmbd package..."
+          rm -rf package/feeds/packages/ksmbd
+        fi
+        
+        # Remove other potentially problematic packages
+        if [ -d "package/feeds/packages/ksmbd-tools" ]; then
+          rm -rf package/feeds/packages/ksmbd-tools
+        fi
+
     - name: Setup build environment
       working-directory: ./openwrt
       run: |
-        # Update feeds
-        ./scripts/feeds update -a
+        # Update feeds (skip packages feed if ksmbd was removed)
+        ./scripts/feeds update base packages routing telephony
         ./scripts/feeds install -a
 
-        # Update config with new symbols
+        # Clean and update config
+        echo "Running defconfig..."
         make defconfig
 
-        # Display final config summary
-        echo "=== Final configuration summary ==="
-        make -s printenv V=0
-        echo "==================================="
+        # Check config status
+        echo "=== Configuration check ==="
+        if [ -f ".config" ]; then
+          echo "Config file exists and is ready"
+          echo "Config size: $(wc -l < .config) lines"
+        else
+          echo "Error: .config not found!"
+          exit 1
+        fi
+
+    - name: Fix dependencies
+      working-directory: ./openwrt
+      run: |
+        # Fix missing dependencies by disabling problematic options
+        if grep -q "CONFIG_PACKAGE_ksmbd" .config; then
+          echo "Disabling ksmbd in config..."
+          sed -i 's/CONFIG_PACKAGE_ksmbd=y/# CONFIG_PACKAGE_ksmbd is not set/' .config
+        fi
+        
+        if grep -q "CONFIG_PACKAGE_kmod-fs-ksmbd" .config; then
+          echo "Disabling kmod-fs-ksmbd in config..."
+          sed -i 's/CONFIG_PACKAGE_kmod-fs-ksmbd=y/# CONFIG_PACKAGE_kmod-fs-ksmbd is not set/' .config
+        fi
+        
+        # Run defconfig again to resolve dependencies
+        make defconfig
 
     - name: Build OpenWrt
       working-directory: ./openwrt
       run: |
-        # Build with multiple jobs
-        echo "Starting build process..."
+        # First build dependencies with single job to catch errors early
+        echo "Building dependencies..."
+        make -j1 tools/install
+        make -j1 toolchain/install
+        
+        # Then full build with multiple jobs
+        echo "Starting main build..."
         make -j$(nproc) V=s
 
       env:
@@ -154,6 +207,7 @@ jobs:
         echo "Workflow: $GITHUB_WORKFLOW" >> /tmp/artifacts/build-info.txt
         echo "Target: ZTE E8820V2" >> /tmp/artifacts/build-info.txt
         echo "Source: siwind/openwrt v19.07.7" >> /tmp/artifacts/build-info.txt
+        echo "Notes: Fixed ksmbd dependency issue" >> /tmp/artifacts/build-info.txt
         
         # List all artifacts
         echo "=== Final artifacts ==="
