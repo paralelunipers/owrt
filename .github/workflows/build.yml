@@ -103,26 +103,80 @@ jobs:
           rm -rf package/feeds/packages/ksmbd-tools
         fi
 
+    - name: Enable LuCI and kmod-usb-net-rndis
+      working-directory: ./openwrt
+      run: |
+        # Check current configuration
+        echo "=== Current configuration for LuCI and USB RNDIS ==="
+        grep -E "CONFIG_PACKAGE_(luci|kmod-usb-net-rndis)" .config || echo "No relevant config found"
+        
+        # Enable LuCI packages
+        echo "Enabling LuCI packages..."
+        sed -i 's/# CONFIG_PACKAGE_luci is not set/CONFIG_PACKAGE_luci=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_luci-base is not set/CONFIG_PACKAGE_luci-base=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci-base=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_luci-mod-admin-full is not set/CONFIG_PACKAGE_luci-mod-admin-full=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci-mod-admin-full=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_luci-theme-bootstrap is not set/CONFIG_PACKAGE_luci-theme-bootstrap=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci-theme-bootstrap=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_luci-app-firewall is not set/CONFIG_PACKAGE_luci-app-firewall=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci-app-firewall=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_luci-proto-ipv6 is not set/CONFIG_PACKAGE_luci-proto-ipv6=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci-proto-ipv6=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_luci-proto-ppp is not set/CONFIG_PACKAGE_luci-proto-ppp=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci-proto-ppp=y" >> .config
+        
+        # Enable kmod-usb-net-rndis
+        echo "Enabling kmod-usb-net-rndis..."
+        sed -i 's/# CONFIG_PACKAGE_kmod-usb-net-rndis is not set/CONFIG_PACKAGE_kmod-usb-net-rndis=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_kmod-usb-net-rndis=y" >> .config
+        
+        # Enable essential USB and network packages for RNDIS
+        echo "Enabling USB and network dependencies..."
+        sed -i 's/# CONFIG_PACKAGE_kmod-usb-net is not set/CONFIG_PACKAGE_kmod-usb-net=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_kmod-usb-net=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_kmod-usb-core is not set/CONFIG_PACKAGE_kmod-usb-core=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_kmod-usb-core=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_kmod-usb2 is not set/CONFIG_PACKAGE_kmod-usb2=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_kmod-usb2=y" >> .config
+        
+        # Enable web server and essential services
+        echo "Enabling web server and services..."
+        sed -i 's/# CONFIG_PACKAGE_uhttpd is not set/CONFIG_PACKAGE_uhttpd=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_uhttpd=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_uhttpd-mod-ubus is not set/CONFIG_PACKAGE_uhttpd-mod-ubus=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_uhttpd-mod-ubus=y" >> .config
+        
+        # Enable firewall and network utilities
+        sed -i 's/# CONFIG_PACKAGE_firewall is not set/CONFIG_PACKAGE_firewall=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_firewall=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_iptables is not set/CONFIG_PACKAGE_iptables=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_iptables=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_dnsmasq is not set/CONFIG_PACKAGE_dnsmasq=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_dnsmasq=y" >> .config
+        sed -i 's/# CONFIG_PACKAGE_dnsmasq-dhcpv6 is not set/CONFIG_PACKAGE_dnsmasq-dhcpv6=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_dnsmasq-dhcpv6=y" >> .config
+        
+        # Enable opkg for package management
+        sed -i 's/# CONFIG_PACKAGE_opkg is not set/CONFIG_PACKAGE_opkg=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_opkg=y" >> .config
+
+        # Verify changes
+        echo "=== Verification of enabled packages ==="
+        grep -E "CONFIG_PACKAGE_(luci|kmod-usb-net-rndis|uhttpd)=" .config || echo "Packages not found in config"
+
     - name: Setup build environment
       working-directory: ./openwrt
       run: |
-        # Update feeds (skip packages feed if ksmbd was removed)
-        ./scripts/feeds update base packages routing telephony
+        # Update feeds
+        ./scripts/feeds update -a
         ./scripts/feeds install -a
+
+        # Install specific packages
+        ./scripts/feeds install luci
+        ./scripts/feeds install luci-base
+        ./scripts/feeds install luci-mod-admin-full
+        ./scripts/feeds install luci-theme-bootstrap
+        ./scripts/feeds install kmod-usb-net-rndis
+        ./scripts/feeds install kmod-usb-net
+        ./scripts/feeds install kmod-usb-core
+        ./scripts/feeds install kmod-usb2
 
         # Clean and update config
         echo "Running defconfig..."
         make defconfig
 
-        # Check config status
-        echo "=== Configuration check ==="
-        if [ -f ".config" ]; then
-          echo "Config file exists and is ready"
-          echo "Config size: $(wc -l < .config) lines"
-        else
-          echo "Error: .config not found!"
-          exit 1
-        fi
+        # Display final config summary
+        echo "=== Final configuration summary ==="
+        echo "LuCI packages:"
+        grep "CONFIG_PACKAGE_luci" .config || echo "No LuCI packages found"
+        echo ""
+        echo "USB RNDIS packages:"
+        grep "CONFIG_PACKAGE_kmod-usb-net" .config || echo "No USB net packages found"
+        echo "================================"
 
     - name: Fix dependencies
       working-directory: ./openwrt
@@ -141,6 +195,128 @@ jobs:
         # Run defconfig again to resolve dependencies
         make defconfig
 
+    - name: Create custom files for first boot
+      working-directory: ./openwrt
+      run: |
+        # Create working opkg distfeeds configuration
+        mkdir -p files/etc/opkg
+        cat > files/etc/opkg/distfeeds.conf << 'EOF'
+# Working mirrors for OpenWrt 19.07
+src/gz openwrt_base http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/base
+src/gz openwrt_luci http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/luci
+src/gz openwrt_packages http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/packages
+src/gz openwrt_routing http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/routing
+src/gz openwrt_telephony http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/telephony
+src/gz openwrt_targets http://archive.openwrt.org/releases/19.07.7/targets/ramips/mt7621/packages
+EOF
+
+        # Create basic network configuration
+        mkdir -p files/etc/config
+        cat > files/etc/config/network << 'EOF'
+config interface 'loopback'
+    option ifname 'lo'
+    option proto 'static'
+    option ipaddr '127.0.0.1'
+    option netmask '255.0.0.0'
+
+config globals 'globals'
+    option ula_prefix 'fd00:ab:cd::/48'
+
+config interface 'lan'
+    option type 'bridge'
+    option ifname 'eth0'
+    option proto 'static'
+    option ipaddr '192.168.1.1'
+    option netmask '255.255.255.0'
+    option ip6assign '60'
+
+# USB RNDIS interface
+config interface 'usb'
+    option ifname 'usb0'
+    option proto 'dhcp'
+EOF
+
+        # Create basic firewall configuration
+        cat > files/etc/config/firewall << 'EOF'
+config defaults
+    option syn_flood '1'
+    option input 'ACCEPT'
+    option output 'ACCEPT'
+    option forward 'REJECT'
+
+config zone
+    option name 'lan'
+    option input 'ACCEPT'
+    option output 'ACCEPT'
+    option forward 'ACCEPT'
+    option network 'lan'
+
+config zone
+    option name 'wan'
+    option input 'REJECT'
+    option output 'ACCEPT'
+    option forward 'REJECT'
+    option masq '1'
+    option mtu_fix '1'
+    option network 'wan usb'
+
+config zone
+    option name 'usb'
+    option input 'ACCEPT'
+    option output 'ACCEPT'
+    option forward 'ACCEPT'
+    option network 'usb'
+    option masq '1'
+
+config forwarding
+    option src 'lan'
+    option dest 'wan'
+
+config forwarding
+    option src 'lan'
+    option dest 'usb'
+
+config forwarding
+    option src 'usb'
+    option dest 'lan'
+
+config include
+    option path '/etc/firewall.user'
+EOF
+
+        # Create system configuration
+        mkdir -p files/etc/uci-defaults
+        cat > files/etc/uci-defaults/99-custom << 'EOF'
+#!/bin/sh
+
+# Set root password to empty (change on first login)
+passwd -d root
+
+# Enable necessary services
+/etc/init.d/uhttpd enable
+/etc/init.d/firewall enable
+/etc/init.d/network enable
+/etc/init.d/dnsmasq enable
+
+# Set timezone
+uci set system.@system[0].timezone='WIB-7'
+uci set system.@system[0].zonename='Asia/Jakarta'
+uci commit system
+
+# Ensure LuCI is accessible
+uci set uhttpd.main.listen_http='0.0.0.0:80'
+uci set uhttpd.main.listen_https='0.0.0.0:443'
+uci commit uhttpd
+
+# Fix opkg repositories
+sed -i 's|http://mirrors.cloud.tencent.com|http://archive.openwrt.org|g' /etc/opkg/distfeeds.conf
+sed -i 's|http://downloads.openwrt.org|http://archive.openwrt.org|g' /etc/opkg/distfeeds.conf
+
+exit 0
+EOF
+
+        chmod +x files/etc/uci-defaults/99-custom
+
     - name: Build OpenWrt
       working-directory: ./openwrt
       run: |
@@ -156,6 +332,20 @@ jobs:
       env:
         CCACHE_DIR: /github/workspace/ccache
         FORCE_UNSAFE_CONFIGURE: 1
+
+    - name: Verify built packages
+      working-directory: ./openwrt
+      run: |
+        echo "=== Checking built packages ==="
+        if find bin/targets -name "*.manifest" | head -1 | grep -q .; then
+          manifest_file=$(find bin/targets -name "*.manifest" | head -1)
+          echo "Checking manifest: $manifest_file"
+          echo "LuCI packages:"
+          grep "luci" "$manifest_file" || echo "No LuCI packages found"
+          echo ""
+          echo "USB RNDIS packages:"
+          grep "kmod-usb-net-rndis" "$manifest_file" || echo "No USB RNDIS packages found"
+        fi
 
     - name: Prepare artifacts
       working-directory: ./openwrt
@@ -207,7 +397,9 @@ jobs:
         echo "Workflow: $GITHUB_WORKFLOW" >> /tmp/artifacts/build-info.txt
         echo "Target: ZTE E8820V2" >> /tmp/artifacts/build-info.txt
         echo "Source: siwind/openwrt v19.07.7" >> /tmp/artifacts/build-info.txt
-        echo "Notes: Fixed ksmbd dependency issue" >> /tmp/artifacts/build-info.txt
+        echo "Enabled features: LuCI Web Interface, USB RNDIS Support" >> /tmp/artifacts/build-info.txt
+        echo "Verified packages:" >> /tmp/artifacts/build-info.txt
+        grep -E "CONFIG_PACKAGE_(luci|kmod-usb-net-rndis)=" .config >> /tmp/artifacts/build-info.txt 2>/dev/null || true
         
         # List all artifacts
         echo "=== Final artifacts ==="
