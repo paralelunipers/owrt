@@ -52,12 +52,10 @@ jobs:
         tar -xzf openwrt-19.07.7.tar.gz
         mv openwrt-19.07.7 openwrt
         ls -la openwrt/
-		
     - name: copy config
       run: |
         CONFIG_URL="https://raw.githubusercontent.com/paralelunipers/owrt/refs/heads/main/1907-zte"
         wget -q --show-progress -O openwrt/.config $CONFIG_URL
-		
     - name: Clean problematic packages
       working-directory: ./openwrt
       run: |
