@@ -121,7 +121,7 @@ jobs:
         sed -i 's/# CONFIG_PACKAGE_luci-proto-ppp is not set/CONFIG_PACKAGE_luci-proto-ppp=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_luci-proto-ppp=y" >> .config
         
         # Enable kmod-usb-net-rndis
-        echo "Enabling kmod-usb-net-rndis..."
+        echo "Enabling kmod-usb-net-rndis...."
         sed -i 's/# CONFIG_PACKAGE_kmod-usb-net-rndis is not set/CONFIG_PACKAGE_kmod-usb-net-rndis=y/' .config 2>/dev/null || echo "CONFIG_PACKAGE_kmod-usb-net-rndis=y" >> .config
         
         # Enable essential USB and network packages for RNDIS
