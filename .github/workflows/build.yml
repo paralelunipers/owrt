@@ -201,122 +201,15 @@ jobs:
         # Create working opkg distfeeds configuration
         mkdir -p files/etc/opkg
         cat > files/etc/opkg/distfeeds.conf << 'EOF'
-# Working mirrors for OpenWrt 19.07
-src/gz openwrt_base http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/base
-src/gz openwrt_luci http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/luci
-src/gz openwrt_packages http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/packages
-src/gz openwrt_routing http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/routing
-src/gz openwrt_telephony http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/telephony
-src/gz openwrt_targets http://archive.openwrt.org/releases/19.07.7/targets/ramips/mt7621/packages
-EOF
-
-        # Create basic network configuration
-        mkdir -p files/etc/config
-        cat > files/etc/config/network << 'EOF'
-config interface 'loopback'
-    option ifname 'lo'
-    option proto 'static'
-    option ipaddr '127.0.0.1'
-    option netmask '255.0.0.0'
-
-config globals 'globals'
-    option ula_prefix 'fd00:ab:cd::/48'
-
-config interface 'lan'
-    option type 'bridge'
-    option ifname 'eth0'
-    option proto 'static'
-    option ipaddr '192.168.1.1'
-    option netmask '255.255.255.0'
-    option ip6assign '60'
-
-# USB RNDIS interface
-config interface 'usb'
-    option ifname 'usb0'
-    option proto 'dhcp'
-EOF
-
-        # Create basic firewall configuration
-        cat > files/etc/config/firewall << 'EOF'
-config defaults
-    option syn_flood '1'
-    option input 'ACCEPT'
-    option output 'ACCEPT'
-    option forward 'REJECT'
-
-config zone
-    option name 'lan'
-    option input 'ACCEPT'
-    option output 'ACCEPT'
-    option forward 'ACCEPT'
-    option network 'lan'
-
-config zone
-    option name 'wan'
-    option input 'REJECT'
-    option output 'ACCEPT'
-    option forward 'REJECT'
-    option masq '1'
-    option mtu_fix '1'
-    option network 'wan usb'
-
-config zone
-    option name 'usb'
-    option input 'ACCEPT'
-    option output 'ACCEPT'
-    option forward 'ACCEPT'
-    option network 'usb'
-    option masq '1'
-
-config forwarding
-    option src 'lan'
-    option dest 'wan'
-
-config forwarding
-    option src 'lan'
-    option dest 'usb'
-
-config forwarding
-    option src 'usb'
-    option dest 'lan'
-
-config include
-    option path '/etc/firewall.user'
-EOF
-
-        # Create system configuration
-        mkdir -p files/etc/uci-defaults
-        cat > files/etc/uci-defaults/99-custom << 'EOF'
-#!/bin/sh
-
-# Set root password to empty (change on first login)
-passwd -d root
-
-# Enable necessary services
-/etc/init.d/uhttpd enable
-/etc/init.d/firewall enable
-/etc/init.d/network enable
-/etc/init.d/dnsmasq enable
-
-# Set timezone
-uci set system.@system[0].timezone='WIB-7'
-uci set system.@system[0].zonename='Asia/Jakarta'
-uci commit system
-
-# Ensure LuCI is accessible
-uci set uhttpd.main.listen_http='0.0.0.0:80'
-uci set uhttpd.main.listen_https='0.0.0.0:443'
-uci commit uhttpd
-
-# Fix opkg repositories
-sed -i 's|http://mirrors.cloud.tencent.com|http://archive.openwrt.org|g' /etc/opkg/distfeeds.conf
-sed -i 's|http://downloads.openwrt.org|http://archive.openwrt.org|g' /etc/opkg/distfeeds.conf
-
-exit 0
-EOF
-
-        chmod +x files/etc/uci-defaults/99-custom
-
+        # Working mirrors for OpenWrt 19.07
+          src/gz openwrt_base http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/base
+          src/gz openwrt_luci http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/luci
+          src/gz openwrt_packages http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/packages
+          src/gz openwrt_routing http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/routing
+          src/gz openwrt_telephony http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/telephony
+          src/gz openwrt_targets http://archive.openwrt.org/releases/19.07.7/targets/ramips/mt7621/packages
+        EOF
+        
     - name: Build OpenWrt
       working-directory: ./openwrt
       run: |
