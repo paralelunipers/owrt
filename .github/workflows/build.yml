@@ -113,7 +113,7 @@ jobs:
           exit 1
         fi
 
-    - name: Fix dependencies
+	- name: Fix dependencies
       working-directory: ./openwrt
       run: |
         # Fix missing dependencies by disabling problematic options
@@ -259,7 +259,7 @@ jobs:
       with:
         name: zte-e8820v2-complete
         path: /tmp/artifacts/
-        retention-days: 30
+        retention-days: 7
 
     - name: Upload build logs
       if: always()
@@ -269,4 +269,4 @@ jobs:
         path: |
           openwrt/logs/**/*
           openwrt/build_dir/**/log*
-        retention-days: 30
+        retention-days: 7
