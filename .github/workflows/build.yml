@@ -113,7 +113,7 @@ jobs:
           exit 1
         fi
 
-	- name: Fix dependencies
+    - name: Fix dependencies
       working-directory: ./openwrt
       run: |
         # Fix missing dependencies by disabling problematic options
@@ -129,21 +129,22 @@ jobs:
         
         # Run defconfig again to resolve dependencies
         make defconfig
-	- name: Create custom files for first boot
+
+    - name: Create custom files for first boot
       working-directory: ./openwrt
       run: |
         # Create working opkg distfeeds configuration
         mkdir -p files/etc/opkg
         cat > files/etc/opkg/distfeeds.conf << 'EOF'
-			# Working mirrors for OpenWrt 19.07
-			src/gz openwrt_base http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/base
-			src/gz openwrt_luci http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/luci
-			src/gz openwrt_packages http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/packages
-			src/gz openwrt_routing http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/routing
-			src/gz openwrt_telephony http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/telephony
-			src/gz openwrt_targets http://archive.openwrt.org/releases/19.07.7/targets/ramips/mt7621/packages
-		EOF
-		
+# Working mirrors for OpenWrt 19.07
+src/gz openwrt_base http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/base
+src/gz openwrt_luci http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/luci
+src/gz openwrt_packages http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/packages
+src/gz openwrt_routing http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/routing
+src/gz openwrt_telephony http://archive.openwrt.org/releases/19.07.7/packages/mipsel_24kc/telephony
+src/gz openwrt_targets http://archive.openwrt.org/releases/19.07.7/targets/ramips/mt7621/packages
+EOF
+
     - name: Build OpenWrt
       working-directory: ./openwrt
       run: |
